@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/stateless"
+	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -145,6 +146,7 @@ func (payload *Payload) Resolve() *engine.ExecutionPayloadEnvelope {
 		close(payload.stop)
 	}
 	if payload.full != nil {
+		log.Info("[HIVE-DIAG] Resolve returning full block", "id", payload.id, "txs", payload.full.Transactions().Len())
 		envelope := engine.BlockToExecutableData(payload.full, payload.fullFees, payload.sidecars, payload.requests)
 		if payload.fullWitness != nil {
 			envelope.Witness = new(hexutil.Bytes)
@@ -152,6 +154,7 @@ func (payload *Payload) Resolve() *engine.ExecutionPayloadEnvelope {
 		}
 		return envelope
 	}
+	log.Info("[HIVE-DIAG] Resolve returning EMPTY block (payload.full is nil)", "id", payload.id)
 	envelope := engine.BlockToExecutableData(payload.empty, big.NewInt(0), nil, payload.emptyRequests)
 	if payload.emptyWitness != nil {
 		envelope.Witness = new(hexutil.Bytes)
@@ -254,9 +257,15 @@ func (miner *Miner) buildPayload(args *BuildPayloadArgs, witness bool) (*Payload
 		for {
 			select {
 			case <-timer.C:
+				pendingCount := 0
+				for _, txs := range miner.txpool.Pending(txpool.PendingFilter{}) {
+					pendingCount += len(txs)
+				}
+				log.Info("[HIVE-DIAG] Builder goroutine firing", "id", payload.id, "pendingTxs", pendingCount)
 				start := time.Now()
 				r := miner.generateWork(fullParams, witness)
 				if r.err == nil {
+					log.Info("[HIVE-DIAG] Builder produced full block", "id", payload.id, "blockTxs", r.block.Transactions().Len(), "elapsed", time.Since(start))
 					payload.update(r, time.Since(start))
 				} else {
 					log.Info("Error while generating work", "id", payload.id, "err", r.err)

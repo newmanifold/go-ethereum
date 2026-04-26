@@ -466,6 +466,11 @@ func (api *ConsensusAPI) getPayload(payloadID engine.PayloadID, full bool) (*eng
 	if data == nil {
 		return nil, engine.UnknownPayload
 	}
+	txCount := 0
+	if data.ExecutionPayload != nil {
+		txCount = len(data.ExecutionPayload.Transactions)
+	}
+	log.Info("[HIVE-DIAG] getPayload result", "id", payloadID, "full", full, "txCount", txCount)
 	return data, nil
 }
 
