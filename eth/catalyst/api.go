@@ -474,6 +474,14 @@ func (api *ConsensusAPI) getPayload(payloadID engine.PayloadID, full bool) (*eng
 	return data, nil
 }
 
+// GetPayloadFull retrieves a payload by ID, waiting for the full block
+// (with transactions) to be built. Unlike GetPayloadV1-V5 which return
+// immediately (potentially with an empty block), this method blocks until
+// the payload builder goroutine completes its first full build.
+func (api *ConsensusAPI) GetPayloadFull(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error) {
+	return api.getPayload(payloadID, true)
+}
+
 // GetBlobsV1 returns a blob from the transaction pool.
 //
 // Specification:
